@@ -56,6 +56,35 @@ npm run dev
 | `/api/briefs/:id/refine` | POST | Agent follow-up → new version or answer |
 | `/api/health` | GET | Config readiness |
 
+## Deploy (public demo for Devpost)
+
+1. Put secrets in `.env` (copy from `.env.example`).
+2. Run the go/no-go spike, then live-check:
+
+```bash
+npm run spike
+npm run live-check
+```
+
+3. Create a **public** GitHub repo and push (hackathon requires a public repo + MIT license):
+
+```bash
+gh auth login
+gh repo create carry --public --source=. --remote=origin --push
+```
+
+4. Deploy to Vercel and set the same env vars in the project settings:
+
+```bash
+npx vercel --prod
+```
+
+5. Seed featured briefs against production Redis (optional but nice for judges):
+
+```bash
+npm run seed-featured
+```
+
 ## License
 
 MIT — see [LICENSE](./LICENSE).
