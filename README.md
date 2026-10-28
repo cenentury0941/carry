@@ -1,36 +1,61 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Carry
 
-## Getting Started
+Cultural landing briefs for a move. Name the places that make up your week, pick a destination, and choose whether the next chapter should **rhyme** with this one or **depart** from it. Carry returns streets, venues, and a first-week plan grounded in Qloo's taste graph.
 
-First, run the development server:
+Built for the [Qloo Agentic Hackathon](https://qloo.devpost.com/).
+
+## What it does
+
+1. Resolves your origin places to Qloo entities (via autocomplete).
+2. Profiles their taste tags (`GET /v2/insights`, `filter.type=urn:tag`).
+3. Finds candidate areas in the destination (`urn:heatmap`, or place fallback).
+4. Gathers venues per area (`urn:entity:place` + geohash / location).
+5. Compares origin vs area audiences (`GET /v2/analysis/compare`).
+6. Scores **continuity** (Carry's metric) and writes a brief (OpenAI or template).
+
+### Continuity score (disclaimer)
+
+Continuity is **Carry's own metric**, not a Qloo product field. It combines heatmap affinity, shared-tag strength from `/v2/analysis/compare`, and how many origin rituals have a matching venue nearby. It is a taste signal for choosing a street — not a prediction of happiness, rent, or safety.
+
+## Stack
+
+- Next.js App Router (UI + API routes)
+- Framework-free `src/core` pipeline (injectable Qloo + LLM)
+- Zod contracts shared by client and server
+- Upstash Redis for Qloo cache, brief storage, rate limits (in-memory fallback)
+- OpenAI for brief copy + refine agent (template fallback without a key)
+
+## Setup
 
 ```bash
+cp .env.example .env
+# fill QLOO_API_KEY (hackathon key against https://hackathon.api.qloo.com)
+# optional: OPENAI_*, UPSTASH_*
+
+npm install
+npm test
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+### Scripts
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+| Script | Purpose |
+|--------|---------|
+| `npm run spike` | Live go/no-go against Qloo for 3 city routes |
+| `npm run live-check` | One call per endpoint; checks filters change results |
+| `npm run seed-featured` | Build two shareable briefs and mark them featured |
+| `npm test` | Unit tests with a fake Qloo (no network) |
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## API
 
-## Learn More
+| Route | Method | Notes |
+|-------|--------|-------|
+| `/api/places/search?q=` | GET | Place autocomplete |
+| `/api/briefs` | POST | NDJSON stream of pipeline steps + final brief |
+| `/api/briefs/:id` | GET | Saved brief |
+| `/api/briefs/:id/refine` | POST | Agent follow-up → new version or answer |
+| `/api/health` | GET | Config readiness |
 
-To learn more about Next.js, take a look at the following resources:
+## License
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+MIT — see [LICENSE](./LICENSE).
