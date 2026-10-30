@@ -23,7 +23,7 @@ export function ModeToggle({ value, onChange }: Props) {
         >
           <span className="block font-medium">Rhyme</span>
           <span className="block text-xs opacity-80">
-            Keep the same kind of week
+            Familiar Day-To-Day Life
           </span>
         </button>
         <button
@@ -37,7 +37,7 @@ export function ModeToggle({ value, onChange }: Props) {
         >
           <span className="block font-medium">Depart</span>
           <span className="block text-xs opacity-80">
-            Change daily life on purpose
+            A Fresh Change Of Pace
           </span>
         </button>
       </div>

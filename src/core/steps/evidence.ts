@@ -1,6 +1,7 @@
 import type { EvidenceEntity } from "@/contracts";
 import type { Deps } from "../deps";
 import type { HeatAgg } from "../geohash";
+import { filterRelocationVenues } from "../venue-filter";
 import { entityAddress, entityId } from "@/server/qloo/schemas";
 
 export type AreaEvidence = {
@@ -47,32 +48,38 @@ export async function gatherEvidence(
           const places = await deps.qloo.getPlacesInLocation(
             entityIds,
             destination,
-            12,
+            24,
           );
-          venues = places
-            .map(toVenue)
-            .filter((v): v is EvidenceEntity => Boolean(v));
+          venues = filterRelocationVenues(
+            places
+              .map(toVenue)
+              .filter((v): v is EvidenceEntity => Boolean(v)),
+          );
         } else {
           const places = await deps.qloo.getPlacesInGeohash(
             entityIds,
             h.geohash,
-            8,
+            16,
           );
-          venues = places
-            .map(toVenue)
-            .filter((v): v is EvidenceEntity => Boolean(v));
+          venues = filterRelocationVenues(
+            places
+              .map(toVenue)
+              .filter((v): v is EvidenceEntity => Boolean(v)),
+          );
 
           // If geohash filter returns empty, fall back to destination search
           if (venues.length === 0) {
             const places2 = await deps.qloo.getPlacesInLocation(
               entityIds,
               destination,
-              12,
+              24,
             );
-            venues = places2
-              .map(toVenue)
-              .filter((v): v is EvidenceEntity => Boolean(v))
-              .slice(0, 6);
+            venues = filterRelocationVenues(
+              places2
+                .map(toVenue)
+                .filter((v): v is EvidenceEntity => Boolean(v)),
+              6,
+            );
           }
         }
         results.push({ geohash: h.geohash, venues });

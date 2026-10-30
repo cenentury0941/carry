@@ -5,6 +5,12 @@
     },
     "src/app/api/briefs/[id]/refine/route.ts": {
       "maxDuration": 60
+    },
+    "src/app/api/moves/[id]/run/route.ts": {
+      "maxDuration": 60
+    },
+    "src/app/api/moves/[id]/pdf/route.ts": {
+      "maxDuration": 30
     }
   }
 }

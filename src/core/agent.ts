@@ -1,6 +1,7 @@
-import OpenAI from "openai";
+import type OpenAI from "openai";
 import type { Brief, BriefInput } from "@/contracts";
-import { getEnv, hasOpenAI } from "@/server/env";
+import { hasOpenAI } from "@/server/env";
+import { createOpenAIClient, openAIModel } from "@/server/llm/client";
 import type { Deps } from "./deps";
 import { CarryError } from "./deps";
 import { runPipeline } from "./pipeline";
@@ -120,7 +121,8 @@ export async function refineBrief(
   message: string,
   deps: Deps,
 ): Promise<RefineResult> {
-  if (!hasOpenAI()) {
+  const client = createOpenAIClient();
+  if (!client || !hasOpenAI()) {
     // Simple keyword refine without LLM
     const lower = message.toLowerCase();
     const nextInput = { ...previous.input };
@@ -130,8 +132,7 @@ export async function refineBrief(
     return { kind: "brief", brief };
   }
 
-  const env = getEnv();
-  const client = new OpenAI({ apiKey: env.OPENAI_API_KEY });
+  const model = openAIModel();
   let input: BriefInput = { ...previous.input, origin: [...previous.input.origin] };
   let excludeGeohash: string | undefined;
   let answerOnly: string | null = null;
@@ -165,7 +166,7 @@ export async function refineBrief(
 
   for (let i = 0; i < 3; i++) {
     const completion = await client.chat.completions.create({
-      model: env.OPENAI_MODEL,
+      model,
       messages,
       tools,
       tool_choice: "auto",

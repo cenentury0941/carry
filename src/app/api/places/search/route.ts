@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { PlaceSearchQuery } from "@/contracts";
 import { searchPlaces } from "@/server/qloo/endpoints";
-import { clientIp, limitBriefs } from "@/server/ratelimit";
+import { clientIp, limitSearch } from "@/server/ratelimit";
 import { childLog } from "@/server/log";
 import { nanoid } from "nanoid";
 
@@ -12,7 +12,7 @@ export async function GET(req: NextRequest) {
   const requestId = nanoid(8);
   const log = childLog(requestId);
   const ip = clientIp(req.headers);
-  const rl = await limitBriefs(ip); // soft shared limit for search spam
+  const rl = await limitSearch(ip);
   if (!rl.success) {
     return NextResponse.json(
       { kind: "invalid_input", message: "Rate limit exceeded." },

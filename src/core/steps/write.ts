@@ -30,9 +30,20 @@ export function copyMentionsOnlyEvidence(
   const stop = new Set([
     "Your",
     "Keep",
+    "Stay",
     "Start",
     "Try",
     "Spend",
+    "Based",
+    "Add",
+    "Pick",
+    "Swing",
+    "Come",
+    "Find",
+    "Walk",
+    "Take",
+    "Ease",
+    "See",
     "The",
     "This",
     "That",
@@ -49,6 +60,7 @@ export function copyMentionsOnlyEvidence(
     "Depart",
     "Chapter",
     "Week",
+    "Fresh",
   ]);
   for (const c of candidates) {
     if (stop.has(c.split(" ")[0])) continue;

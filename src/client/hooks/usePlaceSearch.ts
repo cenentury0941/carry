@@ -4,6 +4,12 @@ import { useQuery } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 import type { PlaceHit } from "@/contracts";
 
+class SearchError extends Error {
+  constructor(public status: number) {
+    super("Search failed");
+  }
+}
+
 export function usePlaceSearch(query: string) {
   const [debounced, setDebounced] = useState(query);
 
@@ -19,9 +25,11 @@ export function usePlaceSearch(query: string) {
       const res = await fetch(
         `/api/places/search?q=${encodeURIComponent(debounced)}&take=8`,
       );
-      if (!res.ok) throw new Error("Search failed");
+      if (!res.ok) throw new SearchError(res.status);
       const json = (await res.json()) as { results: PlaceHit[] };
       return json.results ?? [];
     },
+    retry: (failureCount, err) =>
+      !(err instanceof SearchError && err.status === 429) && failureCount < 2,
   });
 }

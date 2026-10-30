@@ -27,7 +27,7 @@ describe("template", () => {
     expect(copy.rhymeNote).toContain("Pearl");
   });
 
-  it("builds a 3-item first week", () => {
+  it("builds a 3-item getting-started plan", () => {
     const week = templateFirstWeek(
       {
         origin: [
@@ -47,7 +47,7 @@ describe("template", () => {
   it("rejects invented entity names in copy", () => {
     const ok = copyMentionsOnlyEvidence(
       {
-        headline: "Keep your week in Portland",
+        headline: "Stay close to what you love in Portland",
         summary: "Start at Heart Coffee in Pearl District.",
         rhymeNote: "Indie coffee carries over.",
         departNote: null,

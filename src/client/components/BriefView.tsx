@@ -78,7 +78,7 @@ export function BriefView({
 
       <section className="space-y-3">
         <h2 className="text-sm font-semibold uppercase tracking-wide text-zinc-500">
-          First week
+          What to try first
         </h2>
         <ul className="space-y-3">
           {brief.firstWeek.map((item) => (

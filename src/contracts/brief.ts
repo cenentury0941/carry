@@ -21,7 +21,16 @@ export const EvidenceEntity = z.object({
   name: z.string(),
   type: z.string().optional(),
   address: z.string().optional(),
+  lat: z.number().optional(),
+  lon: z.number().optional(),
+  /** Qloo insights affinity to the user's taste signal entities (0–1). */
   affinity: z.number().optional(),
+  /** Plain-English why — written by the LLM from user input + Qloo evidence. */
+  why: z.string().optional(),
+  /** Overlapping cultural tags from Qloo compare (user tastes vs this place). */
+  evidenceTags: z.array(z.string()).optional(),
+  /** Tags stronger on this place than on the user's profile (Qloo uniqueB). */
+  distinctTags: z.array(z.string()).optional(),
 });
 export type EvidenceEntity = z.infer<typeof EvidenceEntity>;
 

@@ -1,5 +1,23 @@
-import type { BriefCopy } from "@/contracts";
+import type { BriefCopy, DestinationCopy, VenueWhyBatch } from "@/contracts";
 import type { QlooClient } from "@/server/qloo/endpoints";
+
+export type VenueWhyInput = {
+  residenceName: string;
+  originNames: string[];
+  userPreferenceTags: string[];
+  priority: "rhyme" | "depart" | "balanced";
+  destination: string;
+  venues: Array<{
+    id: string;
+    name: string;
+    address?: string;
+    affinity?: number;
+    /** Tags from Qloo compare(user tastes, this venue). */
+    sharedTags: string[];
+    /** Tags stronger on this venue than the user. */
+    venueOnlyTags: string[];
+  }>;
+};
 
 export type LlmWriter = {
   writeBriefCopy: (input: {
@@ -12,6 +30,18 @@ export type LlmWriter = {
     sharedTagNames: string[];
     venueNames: string[];
   }) => Promise<BriefCopy>;
+  writeDestinationCopy?: (input: {
+    destination: string;
+    residenceName: string;
+    priority: "rhyme" | "depart" | "balanced";
+    continuity: number;
+    originNames: string[];
+    matchTags: string[];
+    mismatchTags: string[];
+    venueNames: string[];
+    venueAddresses: string[];
+  }) => Promise<DestinationCopy>;
+  writeVenueWhys?: (input: VenueWhyInput) => Promise<VenueWhyBatch>;
 };
 
 export type Deps = {

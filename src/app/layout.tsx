@@ -16,7 +16,7 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "Carry — cultural landing briefs for a move",
   description:
-    "Name the places that make up your week. Carry finds streets in a new city where those rituals would hold — or change.",
+    "Add a few places you love. Carry finds neighborhoods in a new city that feel familiar — or refreshingly different.",
 };
 
 export default function RootLayout({
@@ -27,7 +27,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body
-        className={`${geistSans.variable} ${geistMono.variable} min-h-screen bg-zinc-50 text-zinc-900 antialiased`}
+        className={`${geistSans.variable} ${geistMono.variable} min-h-screen bg-slate-950 text-zinc-900 antialiased`}
       >
         <Providers>{children}</Providers>
       </body>

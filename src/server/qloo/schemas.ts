@@ -86,29 +86,38 @@ export const InsightsResponse = z
 
 export type InsightsResponse = z.infer<typeof InsightsResponse>;
 
+/** One tag row from /v2/analysis/compare (hackathon shape uses tag_id). */
+export const CompareTagRow = z
+  .object({
+    id: z.string().optional(),
+    tag_id: z.string().optional(),
+    name: z.string().optional(),
+    type: z.string().optional(),
+    popularity: z.number().optional(),
+    query: z
+      .object({
+        score: z.number().optional(),
+        affinity: z.number().optional(),
+        a_affinity: z.number().optional(),
+        b_affinity: z.number().optional(),
+        count: z.union([z.string(), z.number()]).optional(),
+      })
+      .passthrough()
+      .optional(),
+  })
+  .passthrough();
+
+export type CompareTagRow = z.infer<typeof CompareTagRow>;
+
 export const CompareResponse = z
   .object({
     results: z
       .object({
-        tags: z
-          .array(
-            z
-              .object({
-                id: z.string().optional(),
-                name: z.string().optional(),
-                type: z.string().optional(),
-                query: z
-                  .object({
-                    affinity: z.number().optional(),
-                    a_affinity: z.number().optional(),
-                    b_affinity: z.number().optional(),
-                  })
-                  .passthrough()
-                  .optional(),
-              })
-              .passthrough(),
-          )
-          .optional(),
+        // Shared / overlapping tags
+        tags: z.array(CompareTagRow).optional(),
+        // Side-specific tag lists (current hackathon API)
+        a: z.array(CompareTagRow).optional(),
+        b: z.array(CompareTagRow).optional(),
       })
       .passthrough()
       .optional(),
@@ -116,6 +125,10 @@ export const CompareResponse = z
   .passthrough();
 
 export type CompareResponse = z.infer<typeof CompareResponse>;
+
+export function compareTagId(t: CompareTagRow): string | undefined {
+  return t.tag_id || t.id;
+}
 
 export function entityId(e: QlooEntity): string | undefined {
   return e.entity_id ?? e.id;

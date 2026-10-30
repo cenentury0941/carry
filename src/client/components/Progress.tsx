@@ -3,7 +3,7 @@
 import type { StepName } from "@/contracts";
 
 const LABELS: Record<StepName, string> = {
-  profile: "Profiling your week",
+  profile: "Getting to know what you like",
   candidates: "Finding candidate areas",
   evidence: "Gathering venues",
   compare: "Comparing taste",

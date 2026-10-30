@@ -20,7 +20,11 @@ export async function cacheGet(key: string): Promise<string | null> {
   const redis = getRedis();
   if (redis) {
     try {
-      return await redis.get<string>(key);
+      // Upstash may auto-deserialize JSON objects — always return a string.
+      const value = await redis.get<unknown>(key);
+      if (value == null) return null;
+      if (typeof value === "string") return value;
+      return JSON.stringify(value);
     } catch {
       // fall through to memory
     }

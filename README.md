@@ -1,89 +1,90 @@
 # Carry
 
-Cultural landing briefs for a move. Name the places that make up your week, pick a destination, and choose whether the next chapter should **rhyme** with this one or **depart** from it. Carry returns streets, venues, and a first-week plan grounded in Qloo's taste graph.
+Relocation is usually decided with rent, commute, and a map pin. Carry answers a different question: **which parts of your week will still feel like yours after you move?**
 
-Built for the [Qloo Agentic Hackathon](https://qloo.devpost.com/).
+You name where you live now, the places that make up your routine, and a set of candidate homes, neighborhoods, or a wider region. Carry ranks those destinations by cultural fit — what carries over, what breaks, and which venues nearby support the same rituals — using [Qloo](https://docs.qloo.com/)’s taste graph rather than generic “creative neighborhood” copy.
 
-## What it does
+## Who it’s for
 
-1. Resolves your origin places to Qloo entities (via autocomplete).
-2. Profiles their taste tags (`GET /v2/insights`, `filter.type=urn:tag`).
-3. Finds candidate areas in the destination (`urn:heatmap`, or place fallback).
-4. Gathers venues per area (`urn:entity:place` + geohash / location).
-5. Compares origin vs area audiences (`GET /v2/analysis/compare`).
-6. Scores **continuity** (Carry's metric) and writes a brief (OpenAI or template).
+People mid-move, and teams helping someone relocate, who need a concrete read on cultural continuity before they sign a lease — not another list of tourist spots.
 
-### Continuity score (disclaimer)
+## What you get
 
-Continuity is **Carry's own metric**, not a Qloo product field. It combines heatmap affinity, shared-tag strength from `/v2/analysis/compare`, and how many origin rituals have a matching venue nearby. It is a taste signal for choosing a street — not a prediction of happiness, rent, or safety.
+An end-to-end product, not a single API demo:
+
+1. Sign in (or open the app in demo mode without Clerk keys).
+2. Start a **new move** → residence → targets → tastes → run.
+3. Review a **ranked list** of destinations with matches, mismatches, what to expect, and supporting venues.
+4. **Compare** two destinations side by side.
+5. **Export a PDF** brief for the destination you’re considering.
+
+Target modes cover three real situations: homes you’ve already scouted, a shortlist of cities/neighborhoods, or an open region (“somewhere in Oregon”).
+
+Priority modes — **rhyme**, **depart**, or **balanced** — decide whether rankings favor continuity with your current life, a deliberate change of scene, or a mix of both.
+
+Walkthrough: [docs/USER_FLOW.md](docs/USER_FLOW.md).
+
+## How Qloo is used
+
+Carry’s rankings collapse without the taste graph. The move pipeline does non-trivial, multi-step work against Qloo — not a single “places like this” call:
+
+| Step | Qloo surface | Role |
+|------|--------------|------|
+| Taste profile | Taste tags for residence + ritual places | Build the origin cultural fingerprint |
+| Candidate expansion | Heatmap clustering and/or location/geohash place search | Turn homes, areas, or a region into ranked seeds |
+| Venue coverage | Places in location / geohash | Find venues that could continue each ritual |
+| Origin vs destination | `/v2/analysis/compare` | Shared vs unique tags between your life and each candidate |
+
+Optional OpenAI polish turns those signals into readable summaries; without it, template copy still surfaces the same entity-backed evidence.
+
+Details and call map: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
+
+## Continuity score
+
+**Continuity** is Carry’s own metric, not a Qloo product field. It combines affinity, shared tags from compare, and ritual venue coverage. It is a **taste signal** — not rent, commute, safety, or lease advice.
 
 ## Stack
 
-- Next.js App Router (UI + API routes)
-- Framework-free `src/core` pipeline (injectable Qloo + LLM)
-- Zod contracts shared by client and server
-- Upstash Redis for Qloo cache, brief storage, rate limits (in-memory fallback)
-- OpenAI for brief copy + refine agent (template fallback without a key)
+- **Next.js** App Router + **Clerk** (optional demo-user fallback)
+- Framework-free `src/core` (`move-pipeline`, scoring, agents)
+- Zod contracts, **Upstash Redis** (in-memory fallback), OpenAI optional, `@react-pdf/renderer`
+- Typed **Qloo** client with cache and retries
 
 ## Setup
 
 ```bash
 cp .env.example .env
-# fill QLOO_API_KEY (hackathon key against https://hackathon.api.qloo.com)
-# optional: OPENAI_*, UPSTASH_*
+# QLOO_API_KEY required. Optional: OPENAI_*, UPSTASH_*, Clerk keys.
 
 npm install
 npm test
 npm run dev
 ```
 
+Open [http://localhost:3000](http://localhost:3000) → **Open app** (demo) or sign in.
+
 ### Scripts
 
 | Script | Purpose |
 |--------|---------|
-| `npm run spike` | Live go/no-go against Qloo for 3 city routes |
-| `npm run live-check` | One call per endpoint; checks filters change results |
-| `npm run seed-featured` | Build two shareable briefs and mark them featured |
-| `npm test` | Unit tests with a fake Qloo (no network) |
+| `npm run spike` | Live Qloo connectivity check |
+| `npm run live-check` | Endpoint field checks |
+| `npm run seed-featured` | Seed featured briefs (legacy) |
+| `npm test` | Unit tests with a fake Qloo client |
 
-## API
+## Docs
 
-| Route | Method | Notes |
-|-------|--------|-------|
-| `/api/places/search?q=` | GET | Place autocomplete |
-| `/api/briefs` | POST | NDJSON stream of pipeline steps + final brief |
-| `/api/briefs/:id` | GET | Saved brief |
-| `/api/briefs/:id/refine` | POST | Agent follow-up → new version or answer |
-| `/api/health` | GET | Config readiness |
+| Doc | Contents |
+|-----|----------|
+| [ARCHITECTURE.md](docs/ARCHITECTURE.md) | Layers, Qloo map, scoring |
+| [USER_FLOW.md](docs/USER_FLOW.md) | End-to-end walkthrough |
+| [DATA_MODEL.md](docs/DATA_MODEL.md) | Redis keys + Postgres sketch |
+| [API.md](docs/API.md) | HTTP contracts |
+| [ROADMAP.md](docs/ROADMAP.md) | Next steps |
 
-## Deploy (public demo for Devpost)
+## Legacy
 
-1. Put secrets in `.env` (copy from `.env.example`).
-2. Run the go/no-go spike, then live-check:
-
-```bash
-npm run spike
-npm run live-check
-```
-
-3. Create a **public** GitHub repo and push (hackathon requires a public repo + MIT license):
-
-```bash
-gh auth login
-gh repo create carry --public --source=. --remote=origin --push
-```
-
-4. Deploy to Vercel and set the same env vars in the project settings:
-
-```bash
-npx vercel --prod
-```
-
-5. Seed featured briefs against production Redis (optional but nice for judges):
-
-```bash
-npm run seed-featured
-```
+The original one-shot brief form remains at `/legacy` (`/api/briefs*`). Prefer the move wizard for new work.
 
 ## License
 

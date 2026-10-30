@@ -1,20 +1,28 @@
 "use client";
 
 import { useState } from "react";
-import type { OriginPlace } from "@/contracts";
+import type { ResolvedPlace } from "@/contracts";
 import { usePlaceSearch } from "../hooks/usePlaceSearch";
 
 type Props = {
-  selected: OriginPlace[];
-  onChange: (places: OriginPlace[]) => void;
+  selected: ResolvedPlace[];
+  onChange: (places: ResolvedPlace[]) => void;
   max?: number;
+  label?: string;
+  placeholder?: string;
 };
 
-export function PlacePicker({ selected, onChange, max = 6 }: Props) {
+export function PlacePicker({
+  selected,
+  onChange,
+  max = 6,
+  label = "Places",
+  placeholder = "Search places…",
+}: Props) {
   const [query, setQuery] = useState("");
   const { data, isFetching, isError } = usePlaceSearch(query);
 
-  function add(place: OriginPlace) {
+  function add(place: ResolvedPlace) {
     if (selected.some((s) => s.id === place.id)) return;
     if (selected.length >= max) return;
     onChange([...selected, place]);
@@ -27,9 +35,7 @@ export function PlacePicker({ selected, onChange, max = 6 }: Props) {
 
   return (
     <div className="space-y-3">
-      <label className="block text-sm font-medium text-zinc-700">
-        Places from your week (3–6)
-      </label>
+      <label className="block text-sm font-medium text-zinc-700">{label}</label>
       <div className="flex flex-wrap gap-2">
         {selected.map((p) => (
           <button
@@ -45,7 +51,7 @@ export function PlacePicker({ selected, onChange, max = 6 }: Props) {
       <input
         value={query}
         onChange={(e) => setQuery(e.target.value)}
-        placeholder="Search cafes, venues, shops…"
+        placeholder={placeholder}
         className="w-full rounded-md border border-zinc-300 px-3 py-2 text-sm outline-none focus:border-zinc-900"
         disabled={selected.length >= max}
       />
@@ -65,7 +71,16 @@ export function PlacePicker({ selected, onChange, max = 6 }: Props) {
               <button
                 type="button"
                 className="flex w-full flex-col items-start px-3 py-2 text-left text-sm hover:bg-zinc-50"
-                onClick={() => add({ id: hit.id, name: hit.name })}
+                onClick={() =>
+                  add({
+                    id: hit.id,
+                    name: hit.name,
+                    address: hit.address,
+                    type: hit.type,
+                    lat: hit.lat,
+                    lon: hit.lon,
+                  })
+                }
               >
                 <span className="font-medium text-zinc-900">{hit.name}</span>
                 {hit.address && (

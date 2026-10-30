@@ -1,0 +1,105 @@
+import { describe, expect, it } from "vitest";
+import { runMovePipeline } from "../src/core/move-pipeline";
+import type { Deps } from "../src/core/deps";
+import type { MoveProject } from "../src/contracts";
+import type { QlooClient } from "../src/server/qloo/endpoints";
+
+function fakeQloo(): QlooClient {
+  return {
+    searchPlaces: async () => [],
+    getTasteTags: async () => [
+      { id: "tag:coffee", name: "specialty coffee", affinity: 0.8 },
+    ],
+    getHeatmap: async () => [
+      {
+        geohash: "c20g0pxxxx",
+        affinity: 0.8,
+        affinityRank: 0.7,
+        popularity: 0.5,
+      },
+    ],
+    getPlacesInGeohash: async () => [
+      {
+        entity_id: "v1",
+        name: "Heart Coffee",
+        properties: { address: "Pearl, Portland, OR" },
+        query: { affinity: 0.9 },
+      },
+    ],
+    getPlacesInLocation: async () => [
+      {
+        entity_id: "v1",
+        name: "Heart Coffee",
+        properties: { address: "Pearl, Portland, OR" },
+        query: { affinity: 0.9 },
+      },
+      {
+        entity_id: "v2",
+        name: "Powell's Books",
+        query: { affinity: 0.7 },
+      },
+    ],
+    compareEntities: async () => ({
+      shared: [{ id: "tag:coffee", name: "specialty coffee", score: 0.8 }],
+      uniqueA: [],
+      uniqueB: [{ id: "tag:rain", name: "rainy walks", score: 0.5 }],
+    }),
+  };
+}
+
+function deps(): Deps {
+  return {
+    qloo: fakeQloo(),
+    llm: null,
+    log: { info: () => {}, warn: () => {}, error: () => {} },
+    now: () => new Date("2026-10-29T12:00:00Z"),
+    id: () => "move-test",
+  };
+}
+
+const base: MoveProject = {
+  id: "m1",
+  userId: "u1",
+  residence: { id: "r1", name: "Park Slope" },
+  target: {
+    kind: "areas",
+    places: [{ id: "d1", name: "Portland, OR" }],
+  },
+  tastes: {
+    places: [{ id: "t1", name: "Blue Bottle" }],
+    tags: ["indie"],
+    priorities: ["balanced"],
+    inferredFromResidence: true,
+  },
+  status: "draft",
+  result: null,
+  errorMessage: null,
+  createdAt: "2026-10-29T12:00:00Z",
+  updatedAt: "2026-10-29T12:00:00Z",
+};
+
+describe("runMovePipeline", () => {
+  it("ranks destinations for area targets", async () => {
+    const events = [];
+    for await (const e of runMovePipeline(base, deps())) events.push(e);
+    const moveEvent = events.find((e) => e.type === "move");
+    expect(moveEvent?.type).toBe("move");
+    if (moveEvent?.type === "move") {
+      expect(moveEvent.move.result?.destinations.length).toBeGreaterThan(0);
+      expect(moveEvent.move.status).toBe("ready");
+      const top = moveEvent.move.result!.destinations[0];
+      expect(top.matches.length).toBeGreaterThan(0);
+      expect(top.summary.length).toBeGreaterThan(10);
+    }
+  });
+
+  it("expands ambiguous regions", async () => {
+    const project: MoveProject = {
+      ...base,
+      target: { kind: "ambiguous", region: "Oregon, USA" },
+    };
+    const events = [];
+    for await (const e of runMovePipeline(project, deps())) events.push(e);
+    expect(events.some((e) => e.type === "move")).toBe(true);
+  });
+});

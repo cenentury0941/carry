@@ -15,7 +15,7 @@ export default async function BriefPage({
   if (!brief) notFound();
 
   return (
-    <main>
+    <main className="pointer-events-auto">
       <div className="border-b border-zinc-200 bg-white">
         <div className="mx-auto flex max-w-3xl items-center justify-between px-4 py-3">
           <Link href="/" className="text-sm font-medium text-zinc-900">

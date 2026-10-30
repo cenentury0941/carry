@@ -20,8 +20,11 @@ function memoryLimit(
   return { success: true, remaining: limit - hits.length };
 }
 
+const BRIEFS_PER_HOUR = process.env.NODE_ENV === "production" ? 5 : 100;
+
 let briefLimiter: Ratelimit | null = null;
 let refineLimiter: Ratelimit | null = null;
+let searchLimiter: Ratelimit | null = null;
 
 function getBriefLimiter() {
   if (briefLimiter) return briefLimiter;
@@ -29,7 +32,7 @@ function getBriefLimiter() {
   if (!redis) return null;
   briefLimiter = new Ratelimit({
     redis,
-    limiter: Ratelimit.slidingWindow(5, "1 h"),
+    limiter: Ratelimit.slidingWindow(BRIEFS_PER_HOUR, "1 h"),
     prefix: "rl:brief",
   });
   return briefLimiter;
@@ -47,13 +50,34 @@ function getRefineLimiter() {
   return refineLimiter;
 }
 
+function getSearchLimiter() {
+  if (searchLimiter) return searchLimiter;
+  const redis = getRedis();
+  if (!redis) return null;
+  searchLimiter = new Ratelimit({
+    redis,
+    limiter: Ratelimit.slidingWindow(60, "1 m"),
+    prefix: "rl:search",
+  });
+  return searchLimiter;
+}
+
+export async function limitSearch(ip: string) {
+  const limiter = getSearchLimiter();
+  if (limiter) {
+    const r = await limiter.limit(ip);
+    return { success: r.success, remaining: r.remaining };
+  }
+  return memoryLimit(`search:${ip}`, 60, 60 * 1000);
+}
+
 export async function limitBriefs(ip: string) {
   const limiter = getBriefLimiter();
   if (limiter) {
     const r = await limiter.limit(ip);
     return { success: r.success, remaining: r.remaining };
   }
-  return memoryLimit(`brief:${ip}`, 5, 60 * 60 * 1000);
+  return memoryLimit(`brief:${ip}`, BRIEFS_PER_HOUR, 60 * 60 * 1000);
 }
 
 export async function limitRefines(ip: string) {

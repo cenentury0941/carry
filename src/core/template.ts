@@ -17,18 +17,18 @@ export function templateCopy(input: {
   return {
     headline:
       input.mode === "rhyme"
-        ? `Keep your week in ${input.destination}`
-        : `A different chapter in ${input.destination}`,
-    summary: `Your rituals around ${input.originNames.slice(0, 3).join(", ")} map to a continuity score of ${input.continuity}. ${
+        ? `Stay close to what you love in ${input.destination}`
+        : `A fresh change of pace in ${input.destination}`,
+    summary: `Based on places like ${input.originNames.slice(0, 3).join(", ")}, your cultural fit score is ${input.continuity}. ${
       top
-        ? `${top.label} is the strongest rhyme, grounded in ${venues}.`
-        : `We could not find a strong rhyme yet — try different origin places.`
+        ? `${top.label} is the strongest match, with spots like ${venues}.`
+        : `We could not find a strong match yet — try a few more of your favorite places.`
     }`,
     rhymeNote: top
-      ? `${top.label} shares ${shared} with your current week. Start there if you want the next chapter to feel familiar.`
-      : `No rhyme area yet. Add more specific places from your current week.`,
+      ? `${top.label} has a lot in common with the places you already love (${shared}). Start there if you want things to feel familiar.`
+      : `No strong match yet. Add a few more of your favorite places.`,
     departNote: input.depart
-      ? `${input.depart.label} is lively but culturally farther from your origin. Use it when you want daily life to change.`
+      ? `${input.depart.label} is lively but feels farther from what you know. Pick it when you want a fresh change of pace.`
       : null,
   };
 }
@@ -43,27 +43,27 @@ export function templateFirstWeek(
   const items: PlanItem[] = [
     {
       day: "Saturday",
-      title: "Settle the morning ritual",
+      title: "Ease into the morning",
       detail: venues[0]
-        ? `Start at ${venues[0].name}${venues[0].address ? ` (${venues[0].address})` : ""} — the closest echo of your origin week.`
-        : `Walk the top rhyme area and pick a morning spot that feels familiar.`,
+        ? `Start at ${venues[0].name}${venues[0].address ? ` (${venues[0].address})` : ""} — the closest match to places you already like.`
+        : `Take a walk through the top-matched area and find a morning spot that feels right.`,
       entityIds: venues[0] ? [venues[0].id] : [],
     },
     {
       day: "Wednesday",
-      title: "Weeknight room",
+      title: "An evening hangout",
       detail: venues[1]
-        ? `Try ${venues[1].name} midweek — a place that over-indexes with people who also love your origin set.`
-        : `Find a midweek hangout inside the rhyme area.`,
+        ? `Try ${venues[1].name} on a weeknight — people who love your usual spots tend to like it too.`
+        : `Find a friendly weeknight hangout in the matched area.`,
       entityIds: venues[1] ? [venues[1].id] : [],
     },
     {
       day: "Sunday",
-      title: input.mode === "depart" && depart ? "One deliberate departure" : "Confirm the fit",
+      title: input.mode === "depart" && depart ? "Try something different" : "See if it feels like home",
       detail:
         input.mode === "depart" && depart
-          ? `Spend an afternoon in ${depart.label} to feel what changes if you choose the farther street.`
-          : `Revisit ${top?.label ?? input.destination} and decide which street you would actually sign on.`,
+          ? `Spend an afternoon in ${depart.label} to feel what a fresher pace would be like.`
+          : `Swing back through ${top?.label ?? input.destination} and notice which streets you’d actually want to call home.`,
       entityIds: [],
     },
   ];

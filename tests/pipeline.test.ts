@@ -102,7 +102,7 @@ describe("pipeline", () => {
     const brief = events.find((e) => e.type === "brief");
     expect(brief?.type).toBe("brief");
     if (brief?.type === "brief") {
-      expect(brief.brief.copy.summary).toContain("continuity");
+      expect(brief.brief.copy.summary).toContain("cultural fit score");
     }
   });
 });

@@ -60,12 +60,11 @@ export function BriefForm() {
       <header className="space-y-2">
         <p className="text-sm uppercase tracking-wide text-zinc-500">Carry</p>
         <h1 className="text-3xl font-semibold tracking-tight text-zinc-900">
-          Where should your week land next?
+          Where do you plan on moving to?
         </h1>
         <p className="text-zinc-600">
-          Name the places that make up your week. Carry finds streets in a new
-          city where those rituals would hold — or where daily life would
-          change.
+          Add a few places you love. Carry finds neighborhoods in a new city
+          that feel familiar — or where life feels refreshingly different.
         </p>
       </header>
 
@@ -73,7 +72,11 @@ export function BriefForm() {
         control={form.control}
         name="origin"
         render={({ field }) => (
-          <PlacePicker selected={field.value} onChange={field.onChange} />
+          <PlacePicker
+            label="Places you love (3–6)"
+            selected={field.value}
+            onChange={field.onChange}
+          />
         )}
       />
 

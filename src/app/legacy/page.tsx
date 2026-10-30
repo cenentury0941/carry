@@ -23,7 +23,7 @@ export default async function HomePage() {
   }
 
   return (
-    <main>
+    <main className="pointer-events-auto">
       <BriefForm />
       {featured.length > 0 && (
         <section className="mx-auto max-w-lg space-y-3 px-4 pb-16">
