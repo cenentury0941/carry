@@ -24,6 +24,8 @@ See `src/contracts/move.ts`:
 - `status: draft | running | ready | error`  
 - `result: RankedMoveResult | null`  
 
+`RankedMoveResult` also stores `priority` (`rhyme` | `depart` | `balanced`) and `priorityLabel` (`Keep Similar` | `Change` | `Balanced`) used when that result was scored and briefs were written.
+
 `RankedDestination` holds score, continuity, matches, mismatches, summary, expect, venues.
 
 ## Postgres migration (next)

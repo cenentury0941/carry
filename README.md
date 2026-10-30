@@ -20,7 +20,7 @@ An end-to-end product, not a single API demo:
 
 Target modes cover three real situations: homes you’ve already scouted, a shortlist of cities/neighborhoods, or an open region (“somewhere in Oregon”).
 
-Priority modes — **rhyme**, **depart**, or **balanced** — decide whether rankings favor continuity with your current life, a deliberate change of scene, or a mix of both.
+Priority modes — **rhyme** (keep similar), **depart**/**Change** (max taste distance — reverse similarity), or **balanced** — decide how destinations are ranked.
 
 Walkthrough: [docs/USER_FLOW.md](docs/USER_FLOW.md).
 

@@ -8,6 +8,7 @@ import {
   ritualCoverage,
   scoreAreas,
   sharedTagScore,
+  tasteDistance,
 } from "../src/core/scoring";
 import { groupHeatPoints } from "../src/core/geohash";
 
@@ -21,6 +22,12 @@ describe("scoring", () => {
   it("computes depart score as popularity * (1 - affinity_rank)", () => {
     expect(departScore(0.8, 0.2)).toBeCloseTo(0.64);
     expect(departScore(1, 1)).toBe(0);
+  });
+
+  it("computes taste distance as reverse similarity", () => {
+    expect(tasteDistance(1)).toBe(0);
+    expect(tasteDistance(0)).toBe(1);
+    expect(tasteDistance(0.7)).toBeCloseTo(0.3);
   });
 
   it("scores ritual coverage", () => {

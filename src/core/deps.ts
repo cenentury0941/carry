@@ -6,6 +6,8 @@ export type VenueWhyInput = {
   originNames: string[];
   userPreferenceTags: string[];
   priority: "rhyme" | "depart" | "balanced";
+  priorityLabel?: "Keep Similar" | "Change" | "Balanced";
+  briefFocus?: string;
   destination: string;
   venues: Array<{
     id: string;
@@ -34,6 +36,8 @@ export type LlmWriter = {
     destination: string;
     residenceName: string;
     priority: "rhyme" | "depart" | "balanced";
+    priorityLabel: "Keep Similar" | "Change" | "Balanced";
+    briefFocus: string;
     continuity: number;
     originNames: string[];
     matchTags: string[];

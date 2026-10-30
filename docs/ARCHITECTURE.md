@@ -40,8 +40,8 @@ For each destination:
 - `sharedTagScore` — mean of top shared compare tags  
 - `ritualCoverage` — venue count vs origin ritual count  
 - `rhymeScore` = `0.5*affinity + 0.3*shared + 0.2*coverage`  
-- `departScore` = popularity × (1 − affinity)  
-- Final score depends on priority: `rhyme` | `depart` | `balanced`  
+- `tasteDistance` = `1 − rhymeScore` (max distance = reverse similarity)  
+- Final score depends on priority: `rhyme` (similarity) | `depart`/`Change` (distance) | `balanced` (0.6 rhyme + 0.4 distance)  
 - **Continuity** = round(rhymeScore × 100)
 
 These are cultural taste signals, not housing, rent, or safety predictions.

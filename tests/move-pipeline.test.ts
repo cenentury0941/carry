@@ -87,6 +87,8 @@ describe("runMovePipeline", () => {
     if (moveEvent?.type === "move") {
       expect(moveEvent.move.result?.destinations.length).toBeGreaterThan(0);
       expect(moveEvent.move.status).toBe("ready");
+      expect(moveEvent.move.result?.priority).toBe("balanced");
+      expect(moveEvent.move.result?.priorityLabel).toBe("Balanced");
       const top = moveEvent.move.result!.destinations[0];
       expect(top.matches.length).toBeGreaterThan(0);
       expect(top.summary.length).toBeGreaterThan(10);

@@ -34,7 +34,7 @@ const tools: OpenAI.Chat.Completions.ChatCompletionTool[] = [
     function: {
       name: "set_priority",
       description:
-        "Change continuity priority: rhyme (keep similar), depart (change), or balanced. Triggers a Qloo rebuild.",
+        "Change continuity priority: rhyme (keep similar), depart (max taste distance / reverse similarity), or balanced. Triggers a Qloo rebuild.",
       parameters: {
         type: "object",
         properties: {
@@ -235,6 +235,12 @@ function compactMoveContext(move: MoveProject, destinationId?: string) {
           tags: move.tastes.tags,
           places: move.tastes.places.map((p) => p.name),
           inferredFromResidence: move.tastes.inferredFromResidence,
+        }
+      : null,
+    resultPriority: move.result
+      ? {
+          priority: move.result.priority,
+          priorityLabel: move.result.priorityLabel,
         }
       : null,
     destinations: destinations.map((d) => ({

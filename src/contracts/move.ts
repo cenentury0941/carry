@@ -30,6 +30,14 @@ export type TargetScope = z.infer<typeof TargetScope>;
 export const TastePriority = z.enum(["rhyme", "depart", "balanced"]);
 export type TastePriority = z.infer<typeof TastePriority>;
 
+/** Human-readable labels for taste priority (Keep Similar / Change / Balanced). */
+export const TastePriorityLabel = z.enum([
+  "Keep Similar",
+  "Change",
+  "Balanced",
+]);
+export type TastePriorityLabel = z.infer<typeof TastePriorityLabel>;
+
 export const TasteProfile = z.object({
   places: z.array(ResolvedPlace).max(12).default([]),
   tags: z.array(z.string()).max(20).default([]),
@@ -62,6 +70,10 @@ export type RankedDestination = z.infer<typeof RankedDestination>;
 export const RankedMoveResult = z.object({
   destinations: z.array(RankedDestination),
   generatedAt: z.string(),
+  /** Priority used when this result was scored and briefs were written. */
+  priority: TastePriority.default("balanced"),
+  /** UI / brief label for that priority. */
+  priorityLabel: TastePriorityLabel.default("Balanced"),
 });
 export type RankedMoveResult = z.infer<typeof RankedMoveResult>;
 
@@ -142,23 +154,25 @@ export const DestinationCopy = z.object({
   summary: z
     .string()
     .describe(
-      "2–4 sentences of plain English explaining how this place fits how the person likes to spend their time",
+      "2–4 sentences of plain English. Honor priority: lead with similarities for Keep Similar, differences for Change, both for Balanced",
     ),
   matchExplanation: z
     .string()
     .describe(
-      "1–2 sentences on what feels familiar, woven from match tags — not a raw tag list",
+      "1–2 sentences on what feels familiar, woven from match tags — not a raw tag list. Emphasize for Keep Similar; keep brief for Change",
     ),
   mismatchExplanation: z
     .string()
     .describe(
-      "1–2 sentences on what would feel different, woven from mismatch tags — not a raw tag list",
+      "1–2 sentences on what would feel different, woven from mismatch tags — not a raw tag list. Emphasize for Change; keep brief for Keep Similar",
     ),
   expect: z
     .array(z.string())
     .min(2)
     .max(4)
-    .describe("Friendly tips for what to try first, in full sentences"),
+    .describe(
+      "Friendly tips for what to try first, ordered for their priority (familiar first for Keep Similar, stretch first for Change)",
+    ),
 });
 export type DestinationCopy = z.infer<typeof DestinationCopy>;
 

@@ -100,9 +100,9 @@ export function BoardingPassCarousel({
     const found =
       activeId != null ? passes.findIndex((p) => p.id === activeId) : 0;
     scrollToLogical(found >= 0 ? found : 0, "auto");
-    // Re-center when the destination set changes.
+    // Re-center when the destination set or focused pass changes (e.g. priority default).
     // eslint-disable-next-line react-hooks/exhaustive-deps -- passIds captures list identity
-  }, [n, passIds]);
+  }, [n, passIds, activeId]);
 
   const updateOffsets = useCallback(() => {
     const el = scrollerRef.current;

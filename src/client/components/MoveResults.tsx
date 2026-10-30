@@ -22,6 +22,10 @@ import { useAppBarMeta } from "@/client/components/AppBarContext";
 import { MAP_ENTER_ZOOM, fitPointOfView, type LatLon } from "@/client/lib/geo";
 import { geocodePlace } from "@/client/lib/geocodePlace";
 import { uniquifyDestinations } from "@/core/unique-destinations";
+import {
+  pickDefaultDestinationId,
+  resolveMovePriority,
+} from "@/core/priority-meta";
 
 function coordsForDestination(d: RankedDestination): LatLon | null {
   if (typeof d.lat === "number" && typeof d.lon === "number") {
@@ -57,13 +61,19 @@ export function MoveResults({ move: initialMove }: { move: MoveProject }) {
   );
   const { setConfig, reset } = useGlobe();
 
-  const [selectedId, setSelectedId] = useState(
-    () => uniquifyDestinations(initialMove.result?.destinations ?? [])[0]?.id ?? "",
-  );
+  const [selectedId, setSelectedId] = useState(() => {
+    const dests = uniquifyDestinations(initialMove.result?.destinations ?? []);
+    return pickDefaultDestinationId(dests, resolveMovePriority(initialMove));
+  });
   const [expanded, setExpanded] = useState(false);
-  const [compareB, setCompareB] = useState(
-    () => uniquifyDestinations(initialMove.result?.destinations ?? [])[1]?.id ?? "",
-  );
+  const [compareB, setCompareB] = useState(() => {
+    const dests = uniquifyDestinations(initialMove.result?.destinations ?? []);
+    const focus = pickDefaultDestinationId(
+      dests,
+      resolveMovePriority(initialMove),
+    );
+    return dests.find((d) => d.id !== focus)?.id ?? dests[1]?.id ?? "";
+  });
   const [diff, setDiff] = useState<DestinationCompare | null>(null);
   const [compareError, setCompareError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -88,13 +98,21 @@ export function MoveResults({ move: initialMove }: { move: MoveProject }) {
   }, [move, destinations]);
 
   useEffect(() => {
+    const priority = resolveMovePriority(move);
     if (!destinations.some((d) => d.id === selectedId)) {
-      setSelectedId(destinations[0]?.id ?? "");
+      setSelectedId(pickDefaultDestinationId(destinations, priority));
     }
     if (compareB && !destinations.some((d) => d.id === compareB)) {
-      setCompareB(destinations[1]?.id ?? destinations[0]?.id ?? "");
+      const focus =
+        destinations.find((d) => d.id === selectedId)?.id ??
+        pickDefaultDestinationId(destinations, priority);
+      setCompareB(
+        destinations.find((d) => d.id !== focus)?.id ??
+          destinations[0]?.id ??
+          "",
+      );
     }
-  }, [destinations, selectedId, compareB]);
+  }, [destinations, selectedId, compareB, move]);
 
   const selected = useMemo(
     () => destinations.find((d) => d.id === selectedId) ?? destinations[0],
@@ -457,8 +475,13 @@ export function MoveResults({ move: initialMove }: { move: MoveProject }) {
                 // Prefer the newly introduced destination after replace/add.
                 setSelectedId(added[0].id);
                 setExpanded(true);
-              } else if (selectedGone && nextDests[0]) {
-                setSelectedId(nextDests[0].id);
+              } else if (selectedGone && nextDests.length > 0) {
+                setSelectedId(
+                  pickDefaultDestinationId(
+                    nextDests,
+                    resolveMovePriority(next),
+                  ),
+                );
               }
 
               if (

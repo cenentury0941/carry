@@ -13,9 +13,10 @@ import { decodeCenter, encodeGeohash, groupHeatPoints } from "./geohash";
 import {
   ritualCoverage,
   rhymeScore,
-  departScore,
+  tasteDistance,
   sharedTagScore,
 } from "./scoring";
+import { tastePriorityMeta } from "./priority-meta";
 import { filterUsefulTags, phraseList } from "./humanize-tags";
 import { attachVenueEvidence } from "./venue-why";
 import {
@@ -56,11 +57,12 @@ export function rawGeohashFromSeedId(id: string): string | null {
 function pickScore(
   priority: TastePriority,
   rhyme: number,
-  depart: number,
+  distance: number,
 ): number {
-  if (priority === "depart") return depart;
+  // Change = max taste distance (reverse similarity). Balanced mixes both.
+  if (priority === "depart") return distance;
   if (priority === "rhyme") return rhyme;
-  return 0.6 * rhyme + 0.4 * depart;
+  return 0.6 * rhyme + 0.4 * distance;
 }
 
 function templateDestination(input: {
@@ -69,6 +71,7 @@ function templateDestination(input: {
   matches: Tag[];
   mismatches: Tag[];
   venueNames: string[];
+  priority: TastePriority;
 }): {
   summary: string;
   matchExplanation: string;
@@ -90,25 +93,36 @@ function templateDestination(input: {
     ? `What feels different is a stronger pull toward ${missPhrase} than you have now. That can be a welcome change or take a little getting used to.`
     : "We didn’t find big lifestyle differences — walk the neighborhood before you decide.";
 
+  const continuityLine = `${input.label} scores ${input.continuity} out of 100 for how well it matches the places you love.`;
+  const summaryParts =
+    input.priority === "rhyme"
+      ? [continuityLine, matchExplanation, mismatchExplanation]
+      : input.priority === "depart"
+        ? [continuityLine, mismatchExplanation, matchExplanation]
+        : [continuityLine, matchExplanation, mismatchExplanation];
+
+  const familiarTip = matchPhrase
+    ? `Keep a few of your usual habits — seek out ${phraseList(input.matches.map((t) => t.name), 2)} early on so it feels familiar from the start.`
+    : "Spend a weekend walking the area before you commit.";
+  const stretchTip = missPhrase
+    ? `If you want the move to stretch you, deliberately try something more ${phraseList(input.mismatches.map((t) => t.name), 2)} than your usual routine.`
+    : "Come back for another look over a weekend before signing anything.";
+  const venueTip = input.venueNames[0]
+    ? `Start with ${input.venueNames[0]} when you first get there to get a feel for the neighborhood.`
+    : "Pick one morning spot and one weeknight hangout on your first visit.";
+
+  const expect =
+    input.priority === "depart"
+      ? [stretchTip, venueTip, familiarTip]
+      : input.priority === "rhyme"
+        ? [familiarTip, venueTip, stretchTip]
+        : [familiarTip, venueTip, stretchTip];
+
   return {
-    summary: [
-      `${input.label} scores ${input.continuity} out of 100 for how well it matches the places you love.`,
-      matchExplanation,
-      mismatchExplanation,
-    ].join(" "),
+    summary: summaryParts.join(" "),
     matchExplanation,
     mismatchExplanation,
-    expect: [
-      matchPhrase
-        ? `Keep a few of your usual habits — seek out ${phraseList(input.matches.map((t) => t.name), 2)} early on so it feels familiar from the start.`
-        : "Spend a weekend walking the area before you commit.",
-      input.venueNames[0]
-        ? `Start with ${input.venueNames[0]} when you first get there to get a feel for the neighborhood.`
-        : "Pick one morning spot and one weeknight hangout on your first visit.",
-      missPhrase
-        ? `If you want the move to stretch you, deliberately try something more ${phraseList(input.mismatches.map((t) => t.name), 2)} than your usual routine.`
-        : "Come back for another look over a weekend before signing anything.",
-    ],
+    expect,
   };
 }
 
@@ -394,6 +408,7 @@ export async function* runMovePipeline(
     yield { type: "step", step: "score", status: "start" };
 
     const priority = project.tastes.priorities[0] ?? "balanced";
+    const priorityMeta = tastePriorityMeta(priority);
     const destinations: RankedDestination[] = [];
 
     await Promise.all(
@@ -461,11 +476,8 @@ export async function* runMovePipeline(
           const coverage = ritualCoverage(tasteIds.length, venues.length);
           const affinity = venues[0]?.affinity ?? shared;
           const rhyme = rhymeScore(affinity, shared, coverage);
-          const depart = departScore(
-            Math.min(1, venues.length / 8),
-            1 - affinity,
-          );
-          const score = pickScore(priority, rhyme, depart);
+          const distance = tasteDistance(rhyme);
+          const score = pickScore(priority, rhyme, distance);
           const continuity = Math.round(rhyme * 100);
           const label =
             seed.label.startsWith("Area ") && venues[0]
@@ -479,6 +491,7 @@ export async function* runMovePipeline(
             matches,
             mismatches,
             venueNames: venues.map((v) => v.name),
+            priority,
           });
 
           // Buffer for a second pass after Qloo tags reveal lodging/civic types.
@@ -614,7 +627,9 @@ export async function* runMovePipeline(
           const polished = await deps.llm.writeDestinationCopy({
             destination: dest.label,
             residenceName,
-            priority,
+            priority: priorityMeta.priority,
+            priorityLabel: priorityMeta.priorityLabel,
+            briefFocus: priorityMeta.briefFocus,
             continuity: dest.continuity,
             originNames,
             matchTags: dest.matches.map((t) => t.name).slice(0, 8),
@@ -622,13 +637,20 @@ export async function* runMovePipeline(
             venueNames: dest.venues.map((v) => v.name).slice(0, 8),
             venueAddresses: dest.venues.map((v) => v.address ?? "").slice(0, 8),
           });
-          dest.summary = [
-            polished.summary,
-            polished.matchExplanation,
-            polished.mismatchExplanation,
-          ]
-            .filter(Boolean)
-            .join(" ");
+          // Order explanations by what the user asked for (similar vs different).
+          const ordered =
+            priorityMeta.priority === "depart"
+              ? [
+                  polished.summary,
+                  polished.mismatchExplanation,
+                  polished.matchExplanation,
+                ]
+              : [
+                  polished.summary,
+                  polished.matchExplanation,
+                  polished.mismatchExplanation,
+                ];
+          dest.summary = ordered.filter(Boolean).join(" ");
           dest.expect = polished.expect;
         } catch (err) {
           deps.log.warn(
@@ -646,6 +668,8 @@ export async function* runMovePipeline(
     const result: RankedMoveResult = {
       destinations,
       generatedAt: deps.now().toISOString(),
+      priority: priorityMeta.priority,
+      priorityLabel: priorityMeta.priorityLabel,
     };
 
     const next: MoveProject = {

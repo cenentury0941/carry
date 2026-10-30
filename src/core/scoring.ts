@@ -49,6 +49,11 @@ export function departScore(popularity: number, affinityRank: number): number {
   return clamp01(popularity * (1 - affinityRank));
 }
 
+/** Taste distance: reverse of similarity (rhyme). Higher = more unlike origin tastes. */
+export function tasteDistance(similarity: number): number {
+  return clamp01(1 - similarity);
+}
+
 export function labelFromVenues(venues: EvidenceEntity[], fallback: string): string {
   for (const v of venues) {
     if (v.address) {
