@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  adjustContinuities,
   continuityFromRhyme,
   departScore,
   pickDepartArea,
@@ -28,6 +29,40 @@ describe("scoring", () => {
     expect(tasteDistance(1)).toBe(0);
     expect(tasteDistance(0)).toBe(1);
     expect(tasteDistance(0.7)).toBeCloseTo(0.3);
+  });
+
+  it("spreads continuity away from the mean by up to ±10", () => {
+    // mean 80; maxAbsDeviation 10 → extremes ±10, mid unchanged before bias
+    // high extreme 100 clamps to 98
+    const balanced = adjustContinuities([70, 80, 90], "balanced");
+    expect(balanced).toEqual([60, 80, 98]);
+  });
+
+  it("skips mean-spread for a single destination", () => {
+    expect(adjustContinuities([72], "balanced")).toEqual([72]);
+    expect(adjustContinuities([72], "rhyme")).toEqual([82]);
+    expect(adjustContinuities([72], "depart")).toEqual([62]);
+  });
+
+  it("applies Keep Similar / Change priority bias after spread", () => {
+    const rhyme = adjustContinuities([70, 80, 90], "rhyme");
+    const depart = adjustContinuities([70, 80, 90], "depart");
+    // balanced extremes 60/98 → rhyme +10 → 70/98 (clamped); mid 90
+    expect(rhyme[0]).toBe(70);
+    expect(rhyme[1]).toBe(90);
+    expect(rhyme[2]).toBe(98);
+    // depart −10 → 50/70/90
+    expect(depart[0]).toBe(50);
+    expect(depart[1]).toBe(70);
+    expect(depart[2]).toBe(90);
+    // Keep Similar reads higher than Change for the same raw inputs
+    expect(rhyme.every((v, i) => v >= depart[i])).toBe(true);
+  });
+
+  it("clamps adjusted continuity to 0–98", () => {
+    expect(adjustContinuities([5, 95], "rhyme")).toEqual([5, 98]);
+    expect(adjustContinuities([5, 95], "depart")).toEqual([0, 95]);
+    expect(adjustContinuities([100], "balanced")).toEqual([98]);
   });
 
   it("scores ritual coverage", () => {

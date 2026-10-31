@@ -67,6 +67,15 @@ export const RankedDestination = z.object({
 });
 export type RankedDestination = z.infer<typeof RankedDestination>;
 
+export const MoveProvenance = z.object({
+  originEntityCount: z.number().int().nonnegative(),
+  resolvedPreferenceTags: z
+    .array(z.object({ id: z.string(), name: z.string() }))
+    .default([]),
+  surfaces: z.array(z.string()).default([]),
+});
+export type MoveProvenance = z.infer<typeof MoveProvenance>;
+
 export const RankedMoveResult = z.object({
   destinations: z.array(RankedDestination),
   generatedAt: z.string(),
@@ -74,6 +83,8 @@ export const RankedMoveResult = z.object({
   priority: TastePriority.default("balanced"),
   /** UI / brief label for that priority. */
   priorityLabel: TastePriorityLabel.default("Balanced"),
+  /** How this ranking was grounded in Qloo (entity counts + surfaces). */
+  provenance: MoveProvenance.optional(),
 });
 export type RankedMoveResult = z.infer<typeof RankedMoveResult>;
 

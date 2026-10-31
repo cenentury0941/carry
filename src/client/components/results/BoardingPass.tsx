@@ -8,6 +8,8 @@ type Props = {
   destName: string;
   destAddress?: string;
   continuity?: number;
+  /** Meter caption; defaults to Continuity. */
+  continuityLabel?: string;
   selected?: boolean;
   onClick?: () => void;
   compact?: boolean;
@@ -21,6 +23,7 @@ export function BoardingPass({
   destName,
   destAddress,
   continuity,
+  continuityLabel = "Continuity",
   selected,
   onClick,
   compact = true,
@@ -76,7 +79,7 @@ export function BoardingPass({
           </div>
           {typeof continuity === "number" && (
             <p className="mt-2.5 text-[11px] font-semibold uppercase tracking-wide text-amber-800">
-              Continuity {continuity}
+              {continuityLabel} {continuity}
             </p>
           )}
         </div>

@@ -16,10 +16,10 @@ export function tastePriorityMeta(
         priority: "rhyme",
         priorityLabel: "Keep Similar",
         briefFocus: [
-          "The user chose Keep Similar — they want continuity with their current life.",
-          "Lead with what overlaps: familiar rituals, shared taste signals, and how day-to-day life would rhyme with home.",
-          "Mention differences only briefly as optional flavor, not the headline.",
-          "Weight the summary and match explanation toward similarities; keep the difference explanation short.",
+          "The user chose Keep Similar — emphasize SIMILARITY at the destination above all else.",
+          "Lead hard with overlaps: familiar rituals, shared taste signals, and how day-to-day life would rhyme with home.",
+          "matchExplanation should be the longest, richest part (2 sentences); mismatchExplanation must be one short sentence of optional flavor only — never the headline.",
+          "Summary must open on what stays the same at this destination, not what changes.",
         ].join(" "),
       };
     case "depart":
@@ -27,10 +27,10 @@ export function tastePriorityMeta(
         priority: "depart",
         priorityLabel: "Change",
         briefFocus: [
-          "The user chose Change — they want maximum taste distance from their current life.",
-          "Lead with what would feel different: new rhythms, destination-stronger tastes, and how daily life would stretch them.",
-          "Mention similarities only briefly so they know they won't be totally at sea.",
-          "Weight the summary and difference explanation toward contrasts; keep the familiarity explanation short.",
+          "The user chose Change — emphasize DIFFERENCE at the destination above all else.",
+          "Lead hard with contrasts: new rhythms, destination-stronger tastes, and how daily life would stretch them.",
+          "mismatchExplanation should be the longest, richest part (2 sentences); matchExplanation must be one short sentence so they know they won't be totally at sea.",
+          "Summary must open on what would feel new at this destination, not what stays familiar.",
         ].join(" "),
       };
     default:
@@ -38,7 +38,7 @@ export function tastePriorityMeta(
         priority: "balanced",
         priorityLabel: "Balanced",
         briefFocus: [
-          "The user chose Balanced — cover both continuity and contrast.",
+          "The user chose Balanced — cover both continuity and contrast at the destination.",
           "Give roughly equal weight to what would feel familiar and what would feel new.",
         ].join(" "),
       };

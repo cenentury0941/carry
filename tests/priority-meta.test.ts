@@ -9,12 +9,14 @@ describe("tastePriorityMeta", () => {
     const meta = tastePriorityMeta("rhyme");
     expect(meta.priorityLabel).toBe("Keep Similar");
     expect(meta.briefFocus.toLowerCase()).toContain("similar");
+    expect(meta.briefFocus.toLowerCase()).toContain("matchexplanation");
   });
 
   it("maps depart to Change with difference-focused brief", () => {
     const meta = tastePriorityMeta("depart");
     expect(meta.priorityLabel).toBe("Change");
     expect(meta.briefFocus.toLowerCase()).toContain("difference");
+    expect(meta.briefFocus.toLowerCase()).toContain("mismatchexplanation");
   });
 
   it("maps balanced to Balanced covering both", () => {

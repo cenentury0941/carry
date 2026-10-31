@@ -42,7 +42,7 @@ For each destination:
 - `rhymeScore` = `0.5*affinity + 0.3*shared + 0.2*coverage`  
 - `tasteDistance` = `1 − rhymeScore` (max distance = reverse similarity)  
 - Final score depends on priority: `rhyme` (similarity) | `depart`/`Change` (distance) | `balanced` (0.6 rhyme + 0.4 distance)  
-- **Continuity** = round(rhymeScore × 100)
+- **Continuity** = round(rhymeScore × 100), then priority bias
 
 These are cultural taste signals, not housing, rent, or safety predictions.
 

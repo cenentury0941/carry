@@ -7,6 +7,7 @@ import type { BriefInput } from "../src/contracts";
 function fakeQloo(): QlooClient {
   return {
     searchPlaces: async () => [],
+    searchTags: async () => [],
     getTasteTags: async () => [
       { id: "tag:indie", name: "indie coffee", affinity: 0.8 },
       { id: "tag:live", name: "live music", affinity: 0.6 },

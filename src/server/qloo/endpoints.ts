@@ -1,3 +1,4 @@
+import { z } from "zod";
 import {
   CompareResponse,
   CompareTagRow,
@@ -280,8 +281,65 @@ export async function compareEntities(
   return parseCompareResponse(json);
 }
 
+const TagsSearchResponse = z
+  .object({
+    results: z
+      .object({
+        tags: z
+          .array(
+            z
+              .object({
+                id: z.string().optional(),
+                tag_id: z.string().optional(),
+                name: z.string().optional(),
+              })
+              .passthrough(),
+          )
+          .optional(),
+      })
+      .passthrough()
+      .optional(),
+    tags: z
+      .array(
+        z
+          .object({
+            id: z.string().optional(),
+            tag_id: z.string().optional(),
+            name: z.string().optional(),
+          })
+          .passthrough(),
+      )
+      .optional(),
+  })
+  .passthrough();
+
+export type TagHit = { id: string; name: string };
+
+/** Semantic tag search (hackathon find_tags equivalent). */
+export async function searchTags(
+  query: string,
+  take = 3,
+): Promise<TagHit[]> {
+  const q = query.trim();
+  if (!q) return [];
+  const json = await qlooGet("v2/tags", {
+    "filter.query": q,
+    take,
+  });
+  const parsed = TagsSearchResponse.parse(json);
+  const rows = parsed.results?.tags ?? parsed.tags ?? [];
+  const out: TagHit[] = [];
+  for (const t of rows) {
+    const id = t.id ?? t.tag_id;
+    if (!id || !t.name) continue;
+    out.push({ id, name: t.name });
+  }
+  return out;
+}
+
 export type QlooClient = {
   searchPlaces: typeof searchPlaces;
+  searchTags: typeof searchTags;
   getTasteTags: typeof getTasteTags;
   getHeatmap: typeof getHeatmap;
   getPlacesInGeohash: typeof getPlacesInGeohash;
@@ -291,6 +349,7 @@ export type QlooClient = {
 
 export const liveQloo: QlooClient = {
   searchPlaces,
+  searchTags,
   getTasteTags,
   getHeatmap,
   getPlacesInGeohash,

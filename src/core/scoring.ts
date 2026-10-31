@@ -1,4 +1,4 @@
-import type { Area, EvidenceEntity, Tag } from "@/contracts";
+import type { Area, EvidenceEntity, Tag, TastePriority } from "@/contracts";
 import type { HeatAgg } from "./geohash";
 
 export type ScoredCandidate = {
@@ -52,6 +52,41 @@ export function departScore(popularity: number, affinityRank: number): number {
 /** Taste distance: reverse of similarity (rhyme). Higher = more unlike origin tastes. */
 export function tasteDistance(similarity: number): number {
   return clamp01(1 - similarity);
+}
+
+/** Continuity display ceiling — leave headroom below a perfect 100. */
+const CONTINUITY_MAX = 98;
+
+function clampContinuity(n: number) {
+  if (Number.isNaN(n)) return 0;
+  return Math.max(0, Math.min(CONTINUITY_MAX, n));
+}
+
+/**
+ * Adjust raw 0–100 continuity scores for a move result set:
+ * 1. Spread away from the mean by up to ±10 (N ≥ 2)
+ * 2. Priority bias: Keep Similar +10, Change −10, Balanced 0
+ * 3. Clamp to [0, 98] and round
+ */
+export function adjustContinuities(
+  values: number[],
+  priority: TastePriority,
+): number[] {
+  if (values.length === 0) return [];
+
+  const bias =
+    priority === "rhyme" ? 10 : priority === "depart" ? -10 : 0;
+
+  let spread = values;
+  if (values.length >= 2) {
+    const mean = values.reduce((sum, v) => sum + v, 0) / values.length;
+    const maxAbs = Math.max(...values.map((v) => Math.abs(v - mean)));
+    if (maxAbs > 0) {
+      spread = values.map((v) => v + (10 * (v - mean)) / maxAbs);
+    }
+  }
+
+  return spread.map((v) => Math.round(clampContinuity(v + bias)));
 }
 
 export function labelFromVenues(venues: EvidenceEntity[], fallback: string): string {

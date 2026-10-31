@@ -11,6 +11,7 @@ import type { Deps } from "./deps";
 import { CarryError } from "./deps";
 import { decodeCenter, encodeGeohash, groupHeatPoints } from "./geohash";
 import {
+  adjustContinuities,
   ritualCoverage,
   rhymeScore,
   tasteDistance,
@@ -87,13 +88,26 @@ function templateDestination(input: {
     3,
   );
   const matchExplanation = matchPhrase
-    ? `You’d still find familiar ground here — ${matchPhrase} show up strongly in the local taste profile.`
-    : "There’s less clear overlap with what you like now, so treat this as a fresher change of pace.";
+    ? input.priority === "depart"
+      ? `You’d still recognize a few threads — ${matchPhrase} show up locally, so you wouldn’t be totally at sea.`
+      : `You’d still find familiar ground here — ${matchPhrase} show up strongly in the local taste profile.`
+    : input.priority === "depart"
+      ? "There’s little clear overlap with what you like now — that stretch is the point of a Change move."
+      : "There’s less clear overlap with what you like now, so treat this as a fresher change of pace.";
   const mismatchExplanation = missPhrase
-    ? `What feels different is a stronger pull toward ${missPhrase} than you have now. That can be a welcome change or take a little getting used to.`
-    : "We didn’t find big lifestyle differences — walk the neighborhood before you decide.";
+    ? input.priority === "rhyme"
+      ? `A lighter note of difference: a stronger local pull toward ${missPhrase} than you have now — optional flavor, not the headline.`
+      : `What feels different is a stronger pull toward ${missPhrase} than you have now. That can be a welcome change or take a little getting used to.`
+    : input.priority === "rhyme"
+      ? "Differences are muted here — the day-to-day should rhyme with home."
+      : "We didn’t find big lifestyle differences — walk the neighborhood before you decide.";
 
-  const continuityLine = `${input.label} scores ${input.continuity} out of 100 for how well it matches the places you love.`;
+  const continuityLine =
+    input.priority === "rhyme"
+      ? `${input.label} scores ${input.continuity} out of 100 for how closely day-to-day taste would rhyme with the places you love.`
+      : input.priority === "depart"
+        ? `${input.label} scores ${input.continuity} out of 100 for continuity — lower means a clearer change of pace from your current tastes.`
+        : `${input.label} scores ${input.continuity} out of 100 for how well it matches the places you love.`;
   const summaryParts =
     input.priority === "rhyme"
       ? [continuityLine, matchExplanation, mismatchExplanation]
@@ -264,6 +278,47 @@ function residenceSearchQuery(residence: ResolvedPlace): string {
   return addr;
 }
 
+/** Accept a tag search hit only on a clear name match (kit: don't force uncertain tags). */
+export function pickClearTagMatch(
+  query: string,
+  hits: { id: string; name: string }[],
+): { id: string; name: string } | null {
+  const q = query.trim().toLowerCase();
+  if (!q || hits.length === 0) return null;
+  const exact = hits.find((h) => h.name.trim().toLowerCase() === q);
+  if (exact) return { id: exact.id, name: exact.name };
+  const substring = hits.find((h) =>
+    h.name.trim().toLowerCase().includes(q),
+  );
+  if (substring) return { id: substring.id, name: substring.name };
+  return null;
+}
+
+async function resolvePreferenceTags(
+  tags: string[],
+  deps: Deps,
+): Promise<{ id: string; name: string }[]> {
+  const out: { id: string; name: string }[] = [];
+  const seen = new Set<string>();
+  for (const raw of tags) {
+    const query = raw.trim();
+    if (!query) continue;
+    try {
+      const hits = await deps.qloo.searchTags(query, 3);
+      const pick = pickClearTagMatch(query, hits);
+      if (!pick || seen.has(pick.id)) continue;
+      seen.add(pick.id);
+      out.push(pick);
+    } catch (err) {
+      deps.log.warn(
+        { tag: query, err: err instanceof Error ? err.message : String(err) },
+        "preference tag search failed",
+      );
+    }
+  }
+  return out;
+}
+
 /**
  * Build Qloo entity ids for taste profiling.
  * Photon residences are locations only — when inferring from residence we
@@ -399,6 +454,10 @@ export async function* runMovePipeline(
     }
 
     const originTags = await deps.qloo.getTasteTags(tasteIds);
+    const resolvedPreferenceTags = await resolvePreferenceTags(
+      project.tastes.tags,
+      deps,
+    );
     yield { type: "step", step: "profile", status: "done" };
 
     yield { type: "step", step: "candidates", status: "start" };
@@ -458,14 +517,16 @@ export async function* runMovePipeline(
             }));
           }
 
-          // Fold freeform user tags as soft matches by name
-          for (const tag of project.tastes!.tags) {
+          // Fold Qloo-resolved preference tags (never invent unresolved labels)
+          for (const tag of resolvedPreferenceTags) {
             if (
               !matches.some(
-                (m) => m.name.toLowerCase() === tag.toLowerCase(),
+                (m) =>
+                  m.id === tag.id ||
+                  m.name.toLowerCase() === tag.name.toLowerCase(),
               )
             ) {
-              matches.push({ id: `user:${tag}`, name: tag, score: 0.4 });
+              matches.push({ id: tag.id, name: tag.name, score: 0.55 });
             }
           }
 
@@ -610,6 +671,26 @@ export async function* runMovePipeline(
         "No destinations could be scored for this move.",
       );
     }
+
+    // Spread continuity away from the batch mean (±10) and apply priority bias.
+    const adjusted = adjustContinuities(
+      destinations.map((d) => d.continuity),
+      priority,
+    );
+    for (let i = 0; i < destinations.length; i++) {
+      destinations[i].continuity = adjusted[i];
+      const copy = templateDestination({
+        label: destinations[i].label,
+        continuity: destinations[i].continuity,
+        matches: destinations[i].matches,
+        mismatches: destinations[i].mismatches,
+        venueNames: destinations[i].venues.map((v) => v.name),
+        priority,
+      });
+      destinations[i].summary = copy.summary;
+      destinations[i].expect = copy.expect;
+    }
+
     yield { type: "step", step: "score", status: "done" };
 
     yield { type: "step", step: "write", status: "start" };
@@ -670,6 +751,17 @@ export async function* runMovePipeline(
       generatedAt: deps.now().toISOString(),
       priority: priorityMeta.priority,
       priorityLabel: priorityMeta.priorityLabel,
+      provenance: {
+        originEntityCount: tasteIds.length,
+        resolvedPreferenceTags,
+        surfaces: [
+          "taste profile",
+          "places/heatmap",
+          "compare",
+          "venues",
+          ...(resolvedPreferenceTags.length ? ["tag search"] : []),
+        ],
+      },
     };
 
     const next: MoveProject = {

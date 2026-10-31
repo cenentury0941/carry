@@ -6,8 +6,10 @@ import type {
   DestinationCompare,
   EvidenceEntity,
   MoveProject,
+  MoveProvenance,
   RankedDestination,
   Tag,
+  TastePriority,
 } from "@/contracts";
 import { humanLabelForTag } from "@/core/humanize-tags";
 import { decodeCenter } from "@/core/geohash";
@@ -507,10 +509,15 @@ export function MoveResults({ move: initialMove }: { move: MoveProject }) {
               destName={selected.label}
               destAddress={selected.address || selected.locationQuery}
               continuity={selected.continuity}
+              continuityLabel={continuityMeterLabel(
+                resolveMovePriority(move),
+              )}
               compact={false}
             />
             <DestinationDetail
               destination={selected}
+              priority={resolveMovePriority(move)}
+              provenance={move.result?.provenance}
               onViewVenue={viewVenue}
             />
             <section className="space-y-3 rounded-lg border border-zinc-200 bg-zinc-50/80 p-4">
@@ -548,13 +555,48 @@ export function MoveResults({ move: initialMove }: { move: MoveProject }) {
   );
 }
 
+function continuityMeterLabel(priority: TastePriority): string {
+  if (priority === "rhyme") return "similarity";
+  if (priority === "depart") return "change of pace";
+  return "continuity";
+}
+
+function continuityHelper(priority: TastePriority): string {
+  if (priority === "rhyme") {
+    return "Similarity reflects how closely this destination rhymes with your Keep Similar priority — from Qloo affinity, shared tags, and venue coverage. Cultural taste only, not rent or safety.";
+  }
+  if (priority === "depart") {
+    return "Lower scores mean a clearer change of pace under your Change priority — from Qloo affinity, shared tags, and venue coverage. Cultural taste only, not rent or safety.";
+  }
+  return "Continuity is Carry's metric from Qloo affinity, shared tags, and venue coverage — a cultural taste signal, not rent, commute, safety, or lease advice.";
+}
+
 function DestinationDetail({
   destination,
+  priority,
+  provenance,
   onViewVenue,
 }: {
   destination: RankedDestination;
+  priority: TastePriority;
+  provenance?: MoveProvenance;
   onViewVenue: (venue: EvidenceEntity, index: number) => void;
 }) {
+  const prefTags = provenance?.resolvedPreferenceTags ?? [];
+  const provenanceLine =
+    provenance && provenance.originEntityCount > 0
+      ? [
+          `Grounded in ${provenance.originEntityCount} Qloo place ${
+            provenance.originEntityCount === 1 ? "entity" : "entities"
+          } · compare + venue coverage`,
+          prefTags.length
+            ? `preference tags: ${prefTags.map((t) => t.name).join(", ")}`
+            : null,
+        ]
+          .filter(Boolean)
+          .join("; ")
+      : null;
+
   return (
     <section className="space-y-5">
       <div className="flex items-start justify-between gap-4">
@@ -570,9 +612,15 @@ function DestinationDetail({
           <p className="text-2xl font-semibold tabular-nums text-zinc-900">
             {destination.continuity}
           </p>
-          <p className="text-[10px] uppercase text-zinc-500">continuity</p>
+          <p className="text-[10px] uppercase text-zinc-500">
+            {continuityMeterLabel(priority)}
+          </p>
         </div>
       </div>
+      <p className="text-xs text-zinc-500">{continuityHelper(priority)}</p>
+      {provenanceLine && (
+        <p className="text-xs text-zinc-500">{provenanceLine}</p>
+      )}
 
       <div>
         <h3 className="text-sm font-semibold text-zinc-900">What to expect</h3>
@@ -597,7 +645,7 @@ function DestinationDetail({
         </ul>
       </div>
 
-      <TasteSignalsPanel destination={destination} />
+      <TasteSignalsPanel destination={destination} priority={priority} />
     </section>
   );
 }
@@ -662,15 +710,62 @@ function VenueCard({
   );
 }
 
-function TasteSignalsPanel({ destination }: { destination: RankedDestination }) {
+function TasteSignalsPanel({
+  destination,
+  priority,
+}: {
+  destination: RankedDestination;
+  priority: TastePriority;
+}) {
+  const familiar = (
+    <TagGroup
+      title="Familiar"
+      tags={destination.matches}
+      tone="match"
+      emphasized={priority === "rhyme"}
+    />
+  );
+  const different = (
+    <TagGroup
+      title="Different"
+      tags={destination.mismatches}
+      tone="miss"
+      emphasized={priority === "depart"}
+    />
+  );
+  const leadDifferent = priority === "depart";
+
   return (
-    <details className="rounded-md border border-zinc-200 bg-zinc-50/80 open:bg-white">
+    <details
+      className="rounded-md border border-zinc-200 bg-zinc-50/80 open:bg-white"
+      open={priority === "rhyme" || priority === "depart"}
+    >
       <summary className="cursor-pointer list-none px-3 py-2 text-sm font-medium text-zinc-800 marker:content-none [&::-webkit-details-marker]:hidden">
         Taste signals
+        {priority === "rhyme"
+          ? " · similarity first"
+          : priority === "depart"
+            ? " · difference first"
+            : ""}
       </summary>
-      <div className="grid gap-3 border-t border-zinc-200 px-3 py-3 sm:grid-cols-2">
-        <TagGroup title="Familiar" tags={destination.matches} tone="match" />
-        <TagGroup title="Different" tags={destination.mismatches} tone="miss" />
+      <div
+        className={
+          priority === "balanced"
+            ? "grid gap-3 border-t border-zinc-200 px-3 py-3 sm:grid-cols-2"
+            : "flex flex-col gap-3 border-t border-zinc-200 px-3 py-3"
+        }
+      >
+        {leadDifferent ? (
+          <>
+            {different}
+            {familiar}
+          </>
+        ) : (
+          <>
+            {familiar}
+            {different}
+          </>
+        )}
       </div>
     </details>
   );
@@ -680,25 +775,30 @@ function TagGroup({
   title,
   tags,
   tone,
+  emphasized = false,
 }: {
   title: string;
   tags: Tag[];
   tone: "match" | "miss";
+  emphasized?: boolean;
 }) {
   return (
-    <div>
+    <div className={emphasized ? "rounded-md bg-white/80 px-2 py-2" : undefined}>
       <h4
         className={`text-[10px] font-semibold uppercase tracking-wide ${
           tone === "match" ? "text-emerald-800" : "text-amber-800"
         }`}
       >
         {title}
+        {emphasized ? " · focus" : ""}
       </h4>
       {tags.length === 0 ? (
         <p className="mt-1 text-xs text-zinc-500">—</p>
       ) : (
         <TagChips
-          labels={tags.slice(0, 6).map((t) => humanLabelForTag(t.name))}
+          labels={tags
+            .slice(0, emphasized ? 8 : 6)
+            .map((t) => humanLabelForTag(t.name))}
           tone={tone}
         />
       )}

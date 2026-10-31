@@ -80,6 +80,16 @@ function originBlurb(move: MoveProject): string {
   return `From ${from}${toward}. Generated ${move.result?.generatedAt ?? move.updatedAt}.`;
 }
 
+function provenanceLine(move: MoveProject): string | null {
+  const p = move.result?.provenance;
+  if (!p || p.originEntityCount <= 0) return null;
+  const entityWord = p.originEntityCount === 1 ? "entity" : "entities";
+  const tags = p.resolvedPreferenceTags ?? [];
+  const base = `Grounded in ${p.originEntityCount} Qloo place ${entityWord} · compare + venue coverage`;
+  if (!tags.length) return base;
+  return `${base}; preference tags: ${tags.map((t) => t.name).join(", ")}`;
+}
+
 function RankingPage({
   move,
   ranked,
@@ -108,6 +118,9 @@ function RankingPage({
         predictions of housing cost, commute, safety, or personal happiness.
         Powered by Qloo.
       </Text>
+      {provenanceLine(move) ? (
+        <Text style={styles.disclaimer}>{provenanceLine(move)}</Text>
+      ) : null}
     </Page>
   );
 }
@@ -216,6 +229,9 @@ function DestinationDetailPage({
         predictions of housing cost, commute, safety, or personal happiness.
         Powered by Qloo.
       </Text>
+      {provenanceLine(move) ? (
+        <Text style={styles.disclaimer}>{provenanceLine(move)}</Text>
+      ) : null}
     </Page>
   );
 }

@@ -59,6 +59,9 @@ export function createOpenAIWriter(): LlmWriter | null {
         "- mismatchExplanation should describe what would feel new or different there — not a judgment.",
         "- expect: 2–4 friendly tips for what to try first (where to start, what to sample), ordered for their priority.",
         "- Follow BRIEF FOCUS below: it decides whether similarities or differences lead the story.",
+        "- Keep Similar (rhyme): make matchExplanation the longest (2 sentences); mismatchExplanation exactly one short sentence; summary leads with similarity at the destination.",
+        "- Change (depart): make mismatchExplanation the longest (2 sentences); matchExplanation exactly one short sentence; summary leads with difference at the destination.",
+        "- Balanced: roughly equal weight to match and mismatch explanations.",
         "",
         `Destination label: ${input.destination}`,
         `Current residence: ${input.residenceName}`,
@@ -81,7 +84,7 @@ export function createOpenAIWriter(): LlmWriter | null {
           {
             role: "system",
             content:
-              "You are Carry, a relocation taste guide. Translate cultural taste data into clear advice. Honor the user's Keep Similar / Change / Balanced priority when deciding whether to emphasize overlaps or contrasts. Never invent places. Never paste tag lists.",
+              "You are Carry, a relocation taste guide. Translate cultural taste data into clear advice. For Keep Similar, emphasize overlaps at the destination; for Change, emphasize contrasts; for Balanced, cover both. Never invent places. Never paste tag lists.",
           },
           { role: "user", content: prompt },
         ],
