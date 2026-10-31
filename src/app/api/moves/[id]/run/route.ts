@@ -68,7 +68,7 @@ export async function POST(
     async start(controller) {
       try {
         for await (const event of runMovePipeline(move, deps)) {
-          controller.enqueue(encoder.encode(JSON.stringify(event) + "\n"));
+          // Persist before streaming so the results page never races an empty store.
           if (event.type === "move") {
             await saveMove(event.move);
             log.info({ moveId: event.move.id }, "move ready");
@@ -76,6 +76,7 @@ export async function POST(
           if (event.type === "error") {
             await setMoveStatus(id, userId, "error", event.message);
           }
+          controller.enqueue(encoder.encode(JSON.stringify(event) + "\n"));
         }
       } catch (err) {
         log.error(
