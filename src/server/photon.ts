@@ -100,6 +100,102 @@ function looksLikeUsQuery(q: string): boolean {
   );
 }
 
+export type ResolvedRegion = {
+  /** Canonical location string for Qloo `filter.location.query`. */
+  query: string;
+  lat: number;
+  lon: number;
+  /** Soft radius used to reject off-map Qloo hits (typos → wrong country). */
+  radiusKm: number;
+  name: string;
+  country?: string;
+};
+
+const REGION_RADIUS_KM: Record<string, number> = {
+  country: 2_500,
+  state: 900,
+  region: 600,
+  city: 120,
+};
+
+/** Strip trailing country aliases so Photon can fuzzy-match state/city names. */
+function regionSearchToken(query: string): string {
+  const cleaned = query
+    .replace(
+      /,?\s*(USA|U\.S\.A\.|United States of America|United States|UK|U\.K\.|United Kingdom)\s*$/i,
+      "",
+    )
+    .trim();
+  return cleaned.length >= 2 ? cleaned : query.trim();
+}
+
+function regionLabel(props: PhotonProperties): string {
+  const name = props.name || props.state || props.country || "Region";
+  if (props.osm_value === "country" || props.type === "country") return name;
+  if (props.country) return `${name}, ${props.country}`;
+  if (props.state && props.state !== name) return `${name}, ${props.state}`;
+  return name;
+}
+
+/**
+ * Resolve a free-text region (state / country / city) via Photon admin layers.
+ * Fuzzy-matches typos like "Washingon, USA" → Washington state so Qloo is not
+ * fed a garbage location query (which can return e.g. Disneyland Paris).
+ */
+export async function resolveRegion(
+  query: string,
+): Promise<ResolvedRegion | null> {
+  const q = query.trim();
+  if (q.length < 2) return null;
+
+  const token = regionSearchToken(q);
+  const url = new URL(PHOTON_URL);
+  url.searchParams.set("q", token);
+  url.searchParams.set("limit", "5");
+  url.searchParams.set("lang", "en");
+  for (const tag of [
+    "place:state",
+    "place:country",
+    "place:region",
+    "place:city",
+  ]) {
+    url.searchParams.append("osm_tag", tag);
+  }
+
+  const res = await fetch(url.toString(), {
+    headers: {
+      Accept: "application/json",
+      "User-Agent": USER_AGENT,
+    },
+    cache: "no-store",
+  });
+  if (!res.ok) {
+    throw new Error(`Photon region resolve failed (${res.status})`);
+  }
+
+  const json = (await res.json()) as PhotonResponse;
+  const feature = json.features?.[0];
+  if (!feature?.properties || !feature.geometry?.coordinates) return null;
+  const props = feature.properties;
+  const lon = feature.geometry.coordinates[0];
+  const lat = feature.geometry.coordinates[1];
+  if (typeof lat !== "number" || typeof lon !== "number") return null;
+  if (!Number.isFinite(lat) || !Number.isFinite(lon)) return null;
+
+  const kind = (props.osm_value || props.type || "region").toLowerCase();
+  const radiusKm = REGION_RADIUS_KM[kind] ?? 500;
+  const name = props.name || props.state || props.country || token;
+
+  return {
+    query: regionLabel(props),
+    lat,
+    lon,
+    radiusKm,
+    name,
+    country: props.country,
+  };
+}
+
 export async function searchPhoton(
   query: string,
   take = 8,

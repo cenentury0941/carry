@@ -89,7 +89,13 @@ export async function qlooGet<T>(
           throw err;
         }
         lastError = err instanceof Error ? err : new Error(String(err));
+        // Timeouts often mean a bad/huge location filter — fail fast so callers
+        // can fall back (e.g. heatmap → places) instead of burning ~24s on retries.
+        const aborted =
+          (err instanceof Error && err.name === "AbortError") ||
+          /aborted/i.test(lastError.message);
         logger.warn({ err: lastError.message, attempt, path }, "qloo retry");
+        if (aborted) break;
         const jitter = 200 + Math.random() * 400 * (attempt + 1);
         await sleep(jitter);
       } finally {

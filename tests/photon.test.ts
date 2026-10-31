@@ -4,6 +4,7 @@ import {
   isPhotonPlaceId,
   isQlooEntityId,
 } from "../src/server/photon";
+import { haversineKm } from "../src/core/geohash";
 
 describe("photon helpers", () => {
   it("detects photon vs qloo ids", () => {
@@ -27,5 +28,13 @@ describe("photon helpers", () => {
         country: "United States",
       }),
     ).toBe("347 5th Avenue, Brooklyn, New York, 11215, United States");
+  });
+});
+
+describe("haversineKm", () => {
+  it("puts Paris far outside Washington state", () => {
+    const wa = { lat: 47.29, lon: -120.21 };
+    const paris = { lat: 48.87, lon: 2.78 };
+    expect(haversineKm(wa, paris)).toBeGreaterThan(7000);
   });
 });

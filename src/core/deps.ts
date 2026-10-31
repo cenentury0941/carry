@@ -1,5 +1,6 @@
 import type { BriefCopy, DestinationCopy, VenueWhyBatch } from "@/contracts";
 import type { QlooClient } from "@/server/qloo/endpoints";
+import type { ResolvedRegion } from "@/server/photon";
 
 export type VenueWhyInput = {
   residenceName: string;
@@ -51,6 +52,8 @@ export type LlmWriter = {
 export type Deps = {
   qloo: QlooClient;
   llm: LlmWriter | null;
+  /** Canonicalize free-text regions before Qloo location filters. */
+  geocodeRegion: (query: string) => Promise<ResolvedRegion | null>;
   log: {
     info: (obj: Record<string, unknown>, msg?: string) => void;
     warn: (obj: Record<string, unknown>, msg?: string) => void;

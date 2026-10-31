@@ -57,13 +57,15 @@ function fakeQloo(overrides?: Partial<QlooClient>): QlooClient {
   };
 }
 
-function deps(): Deps {
+function deps(overrides?: Partial<Deps>): Deps {
   return {
     qloo: fakeQloo(),
     llm: null,
+    geocodeRegion: async () => null,
     log: { info: () => {}, warn: () => {}, error: () => {} },
     now: () => new Date("2026-10-29T12:00:00Z"),
     id: () => "move-test",
+    ...overrides,
   };
 }
 
@@ -113,6 +115,76 @@ describe("runMovePipeline", () => {
     const events = [];
     for await (const e of runMovePipeline(project, deps())) events.push(e);
     expect(events.some((e) => e.type === "move")).toBe(true);
+  });
+
+  it("canonicalizes mistyped regions and drops off-map places", async () => {
+    const project: MoveProject = {
+      ...base,
+      target: { kind: "ambiguous", region: "Washingon, USA" },
+    };
+    const d = deps({
+      geocodeRegion: async () => ({
+        query: "Washington, United States",
+        lat: 47.29,
+        lon: -120.21,
+        radiusKm: 900,
+        name: "Washington",
+        country: "United States",
+      }),
+      qloo: fakeQloo({
+        getHeatmap: async () => {
+          throw new Error("This operation was aborted");
+        },
+        getPlacesInLocation: async (_ids, locationQuery) => {
+          expect(locationQuery).toBe("Washington, United States");
+          return [
+            {
+              entity_id: "paris-1",
+              name: "The Royal Pub",
+              properties: { address: "Disney Village, Chessy France" },
+              location: { lat: 48.869, lon: 2.784 },
+              query: { affinity: 0.9 },
+            },
+            {
+              entity_id: "sea-1",
+              name: "Victrola Coffee Roasters",
+              properties: { address: "Seattle, WA" },
+              location: { lat: 47.614, lon: -122.327 },
+              query: { affinity: 0.8 },
+            },
+          ];
+        },
+        getPlacesInGeohash: async () => [
+          {
+            entity_id: "sea-1",
+            name: "Victrola Coffee Roasters",
+            properties: { address: "Seattle, WA" },
+            location: { lat: 47.614, lon: -122.327 },
+            query: { affinity: 0.8 },
+          },
+        ],
+      }),
+    });
+    const events = [];
+    for await (const e of runMovePipeline(project, d)) events.push(e);
+    const moveEvent = events.find((e) => e.type === "move");
+    expect(moveEvent?.type).toBe("move");
+    if (moveEvent?.type !== "move") return;
+    const dests = moveEvent.move.result!.destinations;
+    expect(dests.length).toBeGreaterThan(0);
+    expect(
+      dests.every(
+        (x) =>
+          !/france|paris|chessy|disney/i.test(
+            `${x.label} ${x.address ?? ""} ${x.locationQuery}`,
+          ),
+      ),
+    ).toBe(true);
+    expect(
+      dests.some((x) => /seattle|victrola|washington/i.test(
+        `${x.label} ${x.address ?? ""} ${x.locationQuery}`,
+      )),
+    ).toBe(true);
   });
 
   it("folds resolved preference tags into matches and provenance", async () => {

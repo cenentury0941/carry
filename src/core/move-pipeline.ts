@@ -9,7 +9,13 @@ import type {
 } from "@/contracts";
 import type { Deps } from "./deps";
 import { CarryError } from "./deps";
-import { decodeCenter, encodeGeohash, groupHeatPoints } from "./geohash";
+import {
+  decodeCenter,
+  encodeGeohash,
+  groupHeatPoints,
+  haversineKm,
+} from "./geohash";
+import type { ResolvedRegion } from "@/server/photon";
 import {
   adjustContinuities,
   ritualCoverage,
@@ -173,11 +179,21 @@ async function expandCandidates(
     );
   }
 
-  // ambiguous region → heatmap / place clusters
+  // ambiguous region → canonicalize, then heatmap / place clusters
+  const resolved = await deps.geocodeRegion(target.region);
+  const locationQuery = resolved?.query ?? target.region;
+  if (resolved && resolved.query !== target.region) {
+    deps.log.info(
+      { from: target.region, to: resolved.query },
+      "region query canonicalized",
+    );
+  }
+
   try {
-    const heat = await deps.qloo.getHeatmap(tasteIds, target.region);
-    if (heat.length > 0) {
-      const grouped = groupHeatPoints(heat)
+    const heat = await deps.qloo.getHeatmap(tasteIds, locationQuery);
+    const inRegion = filterHeatToRegion(heat, resolved);
+    if (inRegion.length > 0) {
+      const grouped = groupHeatPoints(inRegion)
         .sort((a, b) => b.affinity - a.affinity)
         .slice(0, 8);
       return uniquifySeedIds(
@@ -186,8 +202,8 @@ async function expandCandidates(
           return {
             id: `geo:${g.geohash}`,
             label: `Area ${g.geohash}`,
-            locationQuery: target.region,
-            address: target.region,
+            locationQuery,
+            address: locationQuery,
             lat: center.lat,
             lon: center.lon,
             entityIds: tasteIds.slice(0, 3),
@@ -204,7 +220,7 @@ async function expandCandidates(
 
   const places = await deps.qloo.getPlacesInLocation(
     tasteIds,
-    target.region,
+    locationQuery,
     30,
   );
   const byHash = new Map<
@@ -216,6 +232,14 @@ async function expandCandidates(
     if (!id || !p.name) continue;
     const lat = p.location?.lat;
     const lon = p.location?.lon;
+    if (
+      resolved &&
+      typeof lat === "number" &&
+      typeof lon === "number" &&
+      !withinRegion(lat, lon, resolved)
+    ) {
+      continue;
+    }
     const hash =
       typeof lat === "number" && typeof lon === "number"
         ? encodeGeohash(lat, lon)
@@ -249,8 +273,8 @@ async function expandCandidates(
       return {
         id: hash.startsWith("place:") ? v.ids[0] : `geo:${hash}`,
         label: v.label,
-        locationQuery: target.region,
-        address: v.address || target.region,
+        locationQuery,
+        address: v.address || locationQuery,
         lat,
         lon,
         entityIds: v.ids,
@@ -261,10 +285,34 @@ async function expandCandidates(
   if (seeds.length === 0) {
     throw new CarryError(
       "no_data",
-      `No candidate areas found in ${target.region}.`,
+      `No candidate areas found in ${locationQuery}. Check the region spelling and try again.`,
     );
   }
   return seeds;
+}
+
+function withinRegion(
+  lat: number,
+  lon: number,
+  region: ResolvedRegion,
+): boolean {
+  return (
+    haversineKm({ lat, lon }, { lat: region.lat, lon: region.lon }) <=
+    region.radiusKm
+  );
+}
+
+function filterHeatToRegion<
+  T extends { geohash: string; lat?: number; lon?: number },
+>(points: T[], region: ResolvedRegion | null): T[] {
+  if (!region) return points;
+  return points.filter((p) => {
+    const lat =
+      typeof p.lat === "number" ? p.lat : decodeCenter(p.geohash).lat;
+    const lon =
+      typeof p.lon === "number" ? p.lon : decodeCenter(p.geohash).lon;
+    return withinRegion(lat, lon, region);
+  });
 }
 
 /** City/neighborhood fragment from a Photon-style address for Qloo search. */

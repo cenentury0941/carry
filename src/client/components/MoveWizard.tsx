@@ -30,8 +30,8 @@ export function MoveWizard({ initial }: Props) {
   const [residence, setResidence] = useState<ResolvedPlace[]>(
     initial.residence ? [initial.residence] : [],
   );
-  const [targetKind, setTargetKind] = useState<TargetScope["kind"]>(
-    initial.target?.kind ?? "areas",
+  const [targetKind, setTargetKind] = useState<"addresses" | "ambiguous">(
+    initial.target?.kind === "ambiguous" ? "ambiguous" : "addresses",
   );
   const [targetPlaces, setTargetPlaces] = useState<ResolvedPlace[]>(
     initial.target && initial.target.kind !== "ambiguous"
@@ -199,11 +199,10 @@ export function MoveWizard({ initial }: Props) {
       {step === 1 && (
         <div className="space-y-4">
           <p className="text-sm font-medium text-zinc-700">Target scope</p>
-          <div className="grid grid-cols-3 gap-2">
+          <div className="grid grid-cols-2 gap-2">
             {(
               [
                 ["addresses", "Homes"],
-                ["areas", "Areas"],
                 ["ambiguous", "Region"],
               ] as const
             ).map(([k, label]) => (
@@ -234,20 +233,13 @@ export function MoveWizard({ initial }: Props) {
               placeholder="e.g. Oregon, USA"
               className="w-full rounded-md border border-zinc-300 px-3 py-2 text-sm"
             />
-          ) : targetKind === "addresses" ? (
+          ) : (
             <AddressPicker
               label="Scouted homes / apartments"
               selected={targetPlaces}
               onChange={setTargetPlaces}
               max={8}
               placeholder="e.g. 347 5th Ave, Brooklyn, NY"
-            />
-          ) : (
-            <PlacePicker
-              label="Cities or neighborhoods"
-              selected={targetPlaces}
-              onChange={setTargetPlaces}
-              max={8}
             />
           )}
           <div className="flex gap-2">

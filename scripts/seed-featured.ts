@@ -24,6 +24,7 @@ function deps(): Deps {
   return {
     qloo: liveQloo,
     llm: createOpenAIWriter(),
+    geocodeRegion: async () => null,
     log: {
       info: (o, m) => console.log(m, o),
       warn: (o, m) => console.warn(m, o),
